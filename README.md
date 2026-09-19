@@ -105,6 +105,7 @@ cp .env.example .env                      # fill in GEMINI_API_KEY
 uv sync
 uv run python scripts/fetch_pgn.py        # optional: round 1 PGNs are already in data/pgn/
 modal deploy engine_farm/app.py           # optional: Stockfish on Modal
+modal run engine_farm/app.py::analyse_round   # optional: re-run the whole-round fan-out
 uv run uvicorn commentator.server:app --port 8000
 ```
 
@@ -130,6 +131,9 @@ that the engine room is closed.
 
 - Interrupt cue → first audio from Gemini Live: **0.9 s** (spike, mid-sentence cut-off).
 - Stockfish on Modal, warm: **0.28 s** for a refutation, **0.9 s** for a depth-20 "what if".
+- Whole round on Modal with `.map()`, one call per game: **30,189 positions at depth 14 in 61 s**
+  across 99 containers (≈490 positions/s). The result, `data/analysis/round1.json`, makes every
+  refutation arrow instant; live calls are kept for "what if" and as the fallback.
 - Round 1 loaded and timelined: 393 games, 100 matches, 200 teams, in under 2 s.
 
 ## Limits

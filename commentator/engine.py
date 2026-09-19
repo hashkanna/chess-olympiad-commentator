@@ -4,7 +4,10 @@ The commentary never depends on it: if the app is not deployed or a call is slow
 go out without a refutation and "what if" reports that the engine room is closed.
 """
 
+import json
 import time
+from functools import cache
+from pathlib import Path
 
 import chess
 import logfire
@@ -57,6 +60,22 @@ async def best_line(fen: str, depth: int = 14) -> dict | None:
     line = result["lines"][0]
     uci = line["pv_uci"][0]
     return {"uci": uci, "san": chess.Board(fen).san(chess.Move.from_uci(uci)), "cp": line["cp"], "mate": line["mate"], "pv_san": line["pv_san"]}
+
+
+@cache
+def _round_analysis() -> dict[str, list]:
+    """Whole-round analysis produced on Modal by `modal run engine_farm/app.py::analyse_round`."""
+    path = Path(__file__).parent.parent / "data" / "analysis" / "round1.json"
+    return json.loads(path.read_text())["analysis"] if path.exists() else {}
+
+
+def cached_reply(game_id: str, ply: int, fen: str) -> dict | None:
+    """Best reply to the move at `ply`, from the batch analysis: instant, no network."""
+    rows = _round_analysis().get(game_id)
+    if not rows or ply > len(rows) or not rows[ply - 1][2]:
+        return None
+    uci = rows[ply - 1][2]
+    return {"uci": uci, "san": chess.Board(fen).san(chess.Move.from_uci(uci)), "cp": rows[ply - 1][0], "mate": rows[ply - 1][1]}
 
 
 async def warm_up() -> None:

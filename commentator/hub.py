@@ -152,11 +152,13 @@ class Hub:
         decision, reason = verdict
         ours = state.match_id == self.match_id
         if ours and decision is not Decision.silent:
-            with logfire.span("engine refutation", board=swing.board):
-                try:
-                    best = await asyncio.wait_for(engine.best_line(state.fen), ENGINE_WAIT_SECONDS)
-                except (TimeoutError, engine.EngineUnavailable):
-                    best = None
+            best = engine.cached_reply(swing.game_id, swing.ply, state.fen)  # from the Modal batch run
+            if best is None:
+                with logfire.span("engine refutation", board=swing.board):
+                    try:
+                        best = await asyncio.wait_for(engine.best_line(state.fen), ENGINE_WAIT_SECONDS)
+                    except (TimeoutError, engine.EngineUnavailable):
+                        best = None
             if best:
                 swing.refutation_san, swing.refutation_uci = best["san"], best["uci"]
 

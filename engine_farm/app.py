@@ -44,6 +44,56 @@ def analyse(fen: str, depth: int = 18, multipv: int = 1) -> dict:
     return {"fen": fen, "depth": depth, "lines": lines, "seconds": round(time.perf_counter() - started, 3)}
 
 
+@app.function(image=image, cpu=1.0, timeout=900, max_containers=100)
+def analyse_game(fens: list[str], depth: int = 14) -> list[dict]:
+    """Every position of one game with a single engine process. Used with .map() over a round."""
+    import chess
+    import chess.engine
+
+    engine = chess.engine.SimpleEngine.popen_uci("/usr/games/stockfish")
+    out = []
+    try:
+        for fen in fens:
+            board = chess.Board(fen)
+            if board.is_game_over():
+                out.append({"cp": None, "mate": None, "best": None})
+                continue
+            info = engine.analyse(board, chess.engine.Limit(depth=depth))
+            score = info["score"].white()
+            pv = info.get("pv", [])
+            out.append({"cp": score.score(), "mate": score.mate(), "best": pv[0].uci() if pv else None})
+    finally:
+        engine.quit()
+    return out
+
+
+@app.local_entrypoint()
+def analyse_round(round_number: int = 1, depth: int = 14):
+    """Fan a whole round out across Modal: one call per game, up to 100 containers at once.
+    Writes data/analysis/round{N}.json: for every game, our own evaluation and best reply per ply."""
+    import json
+    import pathlib
+    import time
+
+    from commentator.pgn_replay import load_round
+
+    rnd = load_round(round_number)
+    games = list(rnd.games.values())
+    positions = sum(len(g.moves) for g in games)
+    print(f"round {round_number}: {len(games)} games, {positions} positions, depth {depth}")
+    started = time.perf_counter()
+    results = list(analyse_game.map([[m.fen for m in g.moves] for g in games], kwargs={"depth": depth}))
+    took = time.perf_counter() - started
+    out = pathlib.Path("data/analysis")
+    out.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "round": round_number, "depth": depth, "games": len(games), "positions": positions, "wall_seconds": round(took, 1),
+        "analysis": {g.game_id: [[r["cp"], r["mate"], r["best"]] for r in res] for g, res in zip(games, results)},
+    }
+    (out / f"round{round_number}.json").write_text(json.dumps(payload, separators=(",", ":")))
+    print(f"{positions} positions in {took:.1f} s wall = {positions / took:.0f} positions/s across the farm")
+
+
 @app.local_entrypoint()
 def main():
     # Position after 1.e4 e5 2.Qh5 Nc6 3.Bc4 Nf6?? -- White mates with Qxf7.
