@@ -24,20 +24,40 @@ also means the caption lands after the moment has passed.
 When installing the rule, tick the `modal` endpoint in step 2 ("Choose endpoints"), or it
 silently does nothing.
 
-**Before / after.** `scripts/gateway_before_after.py` sends the same five real cues from
-Botswana v Brazil through the unchanged agent and prints output tokens, latency and the
-captions. Run it once with the rule off and once with it on; each run prints its Logfire
-trace link.
+**Before / after.** `scripts/gateway_before_after.py` sends the same real cues from Botswana v
+Brazil through the unchanged agent and prints output tokens, latency and the captions. It was
+run with the rule disabled, then with it enabled. Same script, same prompts, same code.
 
 | | Rule off | Rule on |
 |---|---|---|
-| Output tokens per caption (mean) | _fill in_ | _fill in_ |
-| Latency per caption (mean) | _fill in_ | _fill in_ |
-| Fits one line under the board | _fill in_ | _fill in_ |
-| Logfire trace | _link_ | _link_ |
+| Output tokens per caption (mean) | 57 | **19** (−67%) |
+| Latency per caption (mean) | 0.92 s | **0.70 s** |
+| One sentence of ≤16 words, leading with the viewer's team | 0 of 3 | **3 of 3** |
+| Logfire trace id | `01a0ba356945d8ba18a0221a12b7e0df` | `01a0ba36496254c810f7ecfed922f750` |
 
-**Guardrail (bonus).** Viewers type to the commentator, and their words can end up in a
-caption request. A custom pattern for UK phone numbers (`(?:\+44\s?7\d{3}|\b07\d{3})\s?\d{3}\s?\d{3}\b`)
-with action **Redact**, scoped to the `modal` endpoint, keeps them off our GPU. The echo test
-in the script asks the model to repeat a message containing `07700 900123` character for
-character; with the guardrail on, the model repeats the placeholder instead.
+The same cue (Brazil's 34.Rd7 blunder on board 4), before and after:
+
+> **Off:** Board 4: Roberto Junio Brito Molina (BRA) plays 34.Rd7. Molina's winning chances drop
+> from 50% to 7%. Match forecast for Botswana: 11% win, 53% draw, 36% loss.
+>
+> **On:** Botswana gains an advantage after Brazil's winning chances plummet on board four.
+
+Traces are in the Logfire project `deshkanna/starter-project` (EU); search `trace_id = '<id>'`.
+
+**Guardrail (bonus): it fired.** Viewers type to the commentator, and their words can end up in
+a caption request. A custom protection, "Viewer phone numbers (UK)", pattern
+`(?:\+44\s?7\d{3}|\b07\d{3})\s?\d{3}\s?\d{3}\b`, action **Redact**, scoped to the `modal`
+endpoint only, keeps them off our GPU. Echo test (`--echo`): the agent is asked to repeat
+"My number is 07700 900123, call me about board 4." character for character.
+
+| | Model's reply |
+|---|---|
+| Guardrail off | My number is 07700 900123, call me about board 4. |
+| Guardrail on (Redact) | My number is [REDACTED], call me about board 4. |
+
+The model received the placeholder, not the number. Trace id with the guardrail firing:
+`01a0ba37fd3e42766ec032716fd24b67`.
+
+**What runs where.** Gemma 4 26B-A4B on a dedicated Modal endpoint (1×B200, scales to zero after
+five idle minutes) → Pydantic AI Gateway, BYOK provider `modal`, route `modal` → Pydantic AI agent
+in `commentator/captions.py` → caption under the featured board in the web UI.

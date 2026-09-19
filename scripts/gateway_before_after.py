@@ -40,7 +40,8 @@ def real_cues() -> list[CommentaryCue]:
             p = predict_match(list(boards.values()), "Botswana")
             fact = (f"Board {swing.board}: {swing.mover} ({swing.mover_team}) just played {swing.move_number}{'.' if swing.ply % 2 else '...'}{swing.san}. "
                     f"{swing.mover}'s winning chances on this board fell from {swing.mover_chance_before:.0%} to {swing.mover_chance_after:.0%}. "
-                    f"Match forecast for Botswana: win {p.p_win:.0%}, draw {p.p_draw:.0%}, loss {p.p_loss:.0%}.")
+                    f"Match forecast for Botswana: win {p.p_win:.0%}, draw {p.p_draw:.0%}, loss {p.p_loss:.0%}. "
+                    f"This is {'bad' if swing.mover_team == 'Botswana' else 'good'} news for Botswana.")  # same wording as the hub's cues
             cues.append(CommentaryCue(id=len(cues) + 1, t=move.t, decision=Decision.interrupt, reason="", headline=swing.san, fact=fact, match_id=match_id, board=swing.board, swing=swing))
     return cues[-5:]
 
@@ -53,7 +54,7 @@ async def main() -> None:
             started = time.perf_counter()
             result = await agent.run(captions.prompt_for(cue, PROFILE))
             took = time.perf_counter() - started
-            usage = result.usage()
+            usage = result.usage() if callable(result.usage) else result.usage
             rows.append((usage.output_tokens, took, result.output.strip()))
             print(f"[{usage.output_tokens:4d} tokens, {took:5.2f} s] {result.output.strip()[:300]}\n")
         if "--echo" in sys.argv:
@@ -62,7 +63,8 @@ async def main() -> None:
         n = len(rows)
         print(f"{LABEL}: mean output tokens {sum(r[0] for r in rows) / n:.0f}, mean latency {sum(r[1] for r in rows) / n:.2f} s, "
               f"one-liners (<=16 words): {sum(len(r[2].split()) <= 16 for r in rows)}/{n}")
-        print("trace:", logfire.url_from_eid if hasattr(logfire, "url_from_eid") else "", getattr(span, "context", None) and f"trace_id={span.context.trace_id:032x}")
+        ctx = span.get_span_context()
+        print(f"trace: https://logfire-eu.pydantic.dev/deshkanna/starter-project?q=trace_id%3D%27{ctx.trace_id:032x}%27")
 
 
 asyncio.run(main())
