@@ -27,3 +27,6 @@ scripts/smoke_ws.py
 # only round 1 is used; fetch_pgn.py downloads the rest
 data/pgn/open-round2-*
 data/pgn/open-round3-*
+
+# local helper: copies a token from .env to the clipboard
+clip
