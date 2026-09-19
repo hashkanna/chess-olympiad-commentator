@@ -6,6 +6,10 @@ when something important happens in your team's match.
 
 Built solo at the {Tech: Europe} Agentic AI Hack, London, 19 September 2026.
 
+**[▶ Watch the two-minute demo](docs/demo.mp4)** ([download](https://github.com/hashkanna/chess-olympiad-commentator/releases/download/demo-v1/olympiad-commentator-demo.mp4)) ·
+[Pydantic Gateway challenge write-up](docs/gateway-rule.md). The demo was recorded hands-free by
+`scripts/record_demo.py`: the viewer's questions are a text-to-speech voice fed in as the microphone.
+
 About 190 countries play the Olympiad across hundreds of boards. Human commentators cover
 perhaps the top five. If your team is Botswana, nobody explains its match to you. In round 1
 Botswana drew 2–2 with Brazil: a 2230 beat a grandmaster and a 1914 beat a 2390. This
