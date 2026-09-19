@@ -216,3 +216,11 @@ async def explain_decisions(args: NoArgs, hub: Hub) -> dict:
     """Why the director cut in, waited, or stayed silent on recent events. Call when the
     viewer asks things like 'why did you cut to board 3?' or 'why didn't you mention that?'."""
     return {"recent": hub.recent_decisions()}
+
+
+@tool(NoArgs)
+async def round_highlights(args: NoArgs, hub: Hub) -> dict:
+    """What else is happening across the whole round right now: upsets in progress (a much
+    lower-rated player winning) and the biggest recent swings in other matches. Call when the
+    viewer asks what else is going on, or for news from other teams."""
+    return hub.round_highlights()

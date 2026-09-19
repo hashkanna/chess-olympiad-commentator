@@ -34,7 +34,9 @@ project is the commentator that would have been with you for it.
 6. After cutting in, the director holds the replay on that position for half a minute, so you
    can ask about it: "what if Black plays Bc8?" runs a depth-20 search on Modal in the
    background and the answer cuts in when it lands.
-7. Ask "why did you cut in?" and it tells you what the director weighed. The feed on the
+7. Ask "what else is happening in the hall?" and it picks the best stories from the other 99
+   matches: upsets in progress, big swings elsewhere.
+8. Ask "why did you cut in?" and it tells you what the director weighed. The feed on the
    right also shows what it chose to ignore, greyed out, with the reason.
 
 ## How it works
@@ -62,7 +64,7 @@ Lichess PGN ─> Replayer ─MoveEvent─> Swing detector ─SwingEvent─> Gate
 | Gate | Decides **interrupt / mention at a pause / stay silent**, with a reason. Judges change in win chance, never raw centipawns (+9 to +6 is not drama). Rules, no model. | `commentator/gate.py` |
 | Hub | Holds state for every game in the round, runs the replay, fans cues out to the UI and the voice. | `commentator/hub.py` |
 | Voice | Gemini Live session bridged to the browser: audio both ways, barge-in, transcripts, tool dispatch, cue injection, measured latency. | `commentator/live.py` |
-| Tools | `follow_team`, `get_match_state`, `explain_board`, `what_if`, `explain_decisions`: each a Pydantic model. | `commentator/tools.py` |
+| Tools | `follow_team`, `get_match_state`, `explain_board`, `what_if`, `round_highlights`, `explain_decisions`: each a Pydantic model. | `commentator/tools.py` |
 | Engine farm | Stockfish on Modal CPU containers: refutations (≈0.3 s warm), depth-20 "what if" (≈0.9 s), `.map()` over a whole round. | `engine_farm/app.py`, `commentator/engine.py` |
 | Web UI | Featured board with arrows and eval bar, four mini boards with win bars, match score and forecast, director's feed, voice controls with a text fallback. No build step. | `web/` |
 | Contracts | Every shared type. | `commentator/contracts.py` |

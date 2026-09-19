@@ -27,6 +27,7 @@ HOLD_AFTER_CUT_IN = 30.0  # the director stays on the moment this long after cut
 TIME_TROUBLE_SECONDS = 5 * 60  # below this before move 40, the clock is part of the story
 TIME_CONTROL_MOVE = 40
 KNIFE_EDGE_GAP = 0.20  # best move keeps this much more winning chance than the runner-up
+CAPTION_TIMEOUT_SECONDS = 8.0
 ARROW_SECONDS = 25.0  # arrows stay on a board at least this long, even if play moves on
 
 
@@ -292,7 +293,10 @@ class Hub:
 
     async def _caption(self, cue: CommentaryCue, profile: ViewerProfile) -> None:
         started = time.monotonic()
-        text = await captions.write_caption(cue, profile)
+        try:
+            text = await asyncio.wait_for(captions.write_caption(cue, profile), CAPTION_TIMEOUT_SECONDS)
+        except TimeoutError:  # the GPU endpoint was asleep: a caption minutes late is worse than none
+            return
         if text:
             await self.broadcast({"type": "caption", "cue_id": cue.id, "text": text, "ms": round((time.monotonic() - started) * 1000)})
 
@@ -326,6 +330,33 @@ class Hub:
                 "team": p.team, "win": f"{p.p_win:.0%}", "draw": f"{p.p_draw:.0%}", "loss": f"{p.p_loss:.0%}",
                 "expected_points_of_4": round(p.expected_points, 2), "score_so_far": f"{p.score:g}-{p.opponent_score:g}",
             },
+        }
+
+    def round_highlights(self, n: int = 5) -> dict:
+        """What else is happening in the hall right now: upsets in progress and the biggest recent swings."""
+        upsets = []
+        for b in self.boards.values():
+            if b.match_id == self.match_id or b.result or b.white.elo is None or b.black.elo is None or b.ply < 30:
+                continue
+            gap = b.white.elo - b.black.elo
+            underdog, favourite, chance = (b.black, b.white, 1 - b.win_chance_white) if gap > 0 else (b.white, b.black, b.win_chance_white)
+            if abs(gap) >= 250 and chance >= 0.75:
+                upsets.append((abs(gap) * chance, {
+                    "match": b.match_id, "board": b.board,
+                    "underdog": f"{underdog.name} ({underdog.team}, rated {underdog.elo})",
+                    "favourite": f"{favourite.name} ({favourite.team}, rated {favourite.elo})",
+                    "underdog_winning_chances": f"{chance:.0%}", "move": (b.ply + 1) // 2,
+                }))
+        upsets.sort(key=lambda u: -u[0])
+        elsewhere = [c for c in self.feed if not c.about_viewer_match and c.swing][-n:]
+        return {
+            "games_in_progress": sum(1 for b in self.boards.values() if not b.result and b.ply > 0),
+            "games_finished": sum(1 for b in self.boards.values() if b.result),
+            "upsets_in_progress": [u for _, u in upsets[:n]],
+            "recent_big_swings_elsewhere": [
+                {"match": c.match_id, "board": c.board, "who": f"{c.swing.mover} ({c.swing.mover_team})", "move": c.swing.san,
+                 "winning_chances": f"{c.swing.mover_chance_before:.0%} to {c.swing.mover_chance_after:.0%}"} for c in reversed(elsewhere)
+            ],
         }
 
     def recent_decisions(self, n: int = 6) -> list[dict]:
