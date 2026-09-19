@@ -30,3 +30,6 @@ data/pgn/open-round3-*
 
 # local helper: copies a token from .env to the clipboard
 clip
+
+# demo recording scratch
+demo_out/

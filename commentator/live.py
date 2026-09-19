@@ -11,7 +11,10 @@ WHEN_IDLE waits for a pause, SILENT only updates what the model knows.
 
 import asyncio
 import json
+import os
 import time
+import wave
+from pathlib import Path
 
 import logfire
 from fastapi import WebSocket, WebSocketDisconnect
@@ -22,6 +25,44 @@ from . import tools
 from .config import get_settings
 from .contracts import CommentaryCue, Decision, ViewerProfile
 from .hub import Hub
+
+class SpeechRecorder:
+    """Optional: writes the commentator's speech to a WAV exactly as the browser plays it
+    (chunks queued back to back, queue dropped on interruption). Used to make the demo video.
+    Enabled by setting VOICE_TEE_DIR."""
+
+    RATE = 24000
+
+    def __init__(self, directory: str):
+        self.dir = Path(directory)
+        self.dir.mkdir(parents=True, exist_ok=True)
+        self.started_wall = time.time()
+        self.t0 = time.monotonic()
+        self.pcm = bytearray()
+        self.play_head = 0.0
+
+    def chunk(self, data: bytes) -> None:
+        now = time.monotonic() - self.t0
+        start = max(now + 0.03, self.play_head)
+        offset = int(start * self.RATE) * 2
+        if len(self.pcm) < offset:
+            self.pcm.extend(bytes(offset - len(self.pcm)))
+        self.pcm[offset:offset + len(data)] = data
+        self.play_head = start + len(data) / 2 / self.RATE
+
+    def interrupted(self) -> None:
+        cut = int((time.monotonic() - self.t0) * self.RATE) * 2
+        del self.pcm[cut:]
+        self.play_head = 0.0
+
+    def close(self) -> None:
+        with wave.open(str(self.dir / "commentator.wav"), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(self.RATE)
+            w.writeframes(bytes(self.pcm))
+        (self.dir / "commentator.json").write_text(json.dumps({"started_wall": self.started_wall}))
+
 
 SCHEDULING = {
     Decision.interrupt: types.FunctionResponseScheduling.INTERRUPT,
@@ -72,6 +113,7 @@ async def run_voice(ws: WebSocket, hub: Hub, profile: ViewerProfile) -> None:
     cues: asyncio.Queue[tuple[CommentaryCue, float]] = asyncio.Queue()
     pump: asyncio.Task | None = None
     awaiting_audio: dict | None = None  # set when an interrupt cue goes out, cleared at first audio
+    recorder = SpeechRecorder(os.environ["VOICE_TEE_DIR"]) if os.environ.get("VOICE_TEE_DIR") else None
 
     async def emit(event: str, **data) -> None:
         await ws.send_text(json.dumps({"type": event, **data}, default=str))
@@ -146,6 +188,8 @@ async def run_voice(ws: WebSocket, hub: Hub, profile: ViewerProfile) -> None:
                         if not sc:
                             continue
                         if sc.interrupted:
+                            if recorder:
+                                recorder.interrupted()
                             await emit("interrupted")
                         if sc.model_turn:
                             for part in sc.model_turn.parts or []:
@@ -155,6 +199,8 @@ async def run_voice(ws: WebSocket, hub: Hub, profile: ViewerProfile) -> None:
                                         awaiting_audio = None
                                         logfire.info("interrupt latency", **lat)
                                         await hub.broadcast({"type": "latency", **lat})
+                                    if recorder:
+                                        recorder.chunk(part.inline_data.data)
                                     await ws.send_bytes(part.inline_data.data)
                         if sc.input_transcription and sc.input_transcription.text:
                             await emit("transcript", who="viewer", text=sc.input_transcription.text)
@@ -172,6 +218,8 @@ async def run_voice(ws: WebSocket, hub: Hub, profile: ViewerProfile) -> None:
             except WebSocketDisconnect:
                 pass
             finally:
+                if recorder:
+                    recorder.close()
                 hub.cue_queues.discard(cues)
                 for job in [*jobs, *pending.values(), *([pump] if pump else [])]:
                     job.cancel()

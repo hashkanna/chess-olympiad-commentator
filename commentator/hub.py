@@ -8,6 +8,7 @@ One viewer at a time: this is a demo server, not a multi-tenant one.
 
 import asyncio
 import difflib
+import os
 import time
 
 import chess
@@ -20,7 +21,7 @@ from .gate import Gate
 from .model import detect_swing, material, predict_match, win_chance_white
 from .pgn_replay import Game, ReplayClock, Round, load_round, replay
 
-LEAD_IN_MINUTES = 24  # start the replay this much game time before the match's biggest swing
+LEAD_IN_MINUTES = float(os.environ.get("LEAD_IN_MINUTES", "24"))  # start the replay this much game time before the match's biggest swing
 ENGINE_WAIT_SECONDS = 1.5  # how long a cue may wait for the engine's refutation
 HOLD_AFTER_CUT_IN = 30.0  # the director stays on the moment this long after cutting in
 ARROW_SECONDS = 25.0  # arrows stay on a board at least this long, even if play moves on
