@@ -1,0 +1,29 @@
+# secrets — never commit (a leaked Gemini key auto-closes the hackathon account)
+.env
+.env.*
+!.env.example
+.secrets/
+.logfire/
+.modal.toml
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+
+# session handoff notes (names accounts; keep out of the public repo)
+HANDOFF.md
+
+# personal scratch notes
+notes.md
+
+# planning notes and an earlier idea from the same day, kept locally
+chess_commentary.md
+claimcall/
+scripts/smoke_live.py
+scripts/smoke_ws.py
+
+# only round 1 is used; fetch_pgn.py downloads the rest
+data/pgn/open-round2-*
+data/pgn/open-round3-*

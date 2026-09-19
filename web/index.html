@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Olympiad Commentator</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.base.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.brown.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.cburnett.css">
+  <link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Olympiad Commentator</h1>
+    <span class="badge replay" id="replay-badge">REPLAY · real games · 46th Olympiad, round 1</span>
+    <span class="badge" id="game-clock"></span>
+    <span class="spacer"></span>
+    <span class="badge" id="latency" hidden></span>
+    <span class="badge" id="engine"></span>
+  </header>
+
+  <main>
+    <section class="featured" aria-label="Featured board">
+      <div class="player" id="top-player"></div>
+      <div class="stage" id="stage">
+        <div class="evalbar" aria-hidden="true"><div id="evalfill"></div></div>
+        <div class="board-big" id="big"></div>
+      </div>
+      <div class="player" id="bottom-player"></div>
+      <p class="caption" id="caption">Pick a team and start. The commentator follows all four boards of its match and cuts in when something important happens.</p>
+    </section>
+
+    <section class="side">
+      <div class="match" id="match" hidden>
+        <div class="score"><span id="team-a"></span><strong id="score"></strong><span id="team-b"></span></div>
+        <div class="forecast" aria-label="Match forecast">
+          <div id="f-win"></div><div id="f-draw"></div><div id="f-loss"></div>
+        </div>
+        <div class="forecast-legend"><span id="l-win"></span><span id="l-draw"></span><span id="l-loss"></span></div>
+      </div>
+      <div class="minis" id="minis"></div>
+    </section>
+
+    <section class="rail">
+      <div class="panel voice">
+        <div class="pickers">
+          <label>Team <input id="team" list="teams" value="Botswana" autocomplete="off"></label>
+          <datalist id="teams"></datalist>
+          <label>Level
+            <select id="level"><option>beginner</option><option selected>club</option><option>expert</option></select>
+          </label>
+          <label>Language <input id="language" value="English" list="languages"></label>
+          <datalist id="languages">
+            <option>English</option><option>Portuguese</option><option>Setswana</option><option>French</option>
+            <option>Spanish</option><option>German</option><option>Hindi</option><option>Tamil</option>
+          </datalist>
+        </div>
+        <div class="controls">
+          <button id="call" class="primary">Start commentary</button>
+          <button id="mute" disabled aria-pressed="false">Mute</button>
+          <button id="watch" title="Run the replay and alerts without the voice">Watch silently</button>
+        </div>
+        <form id="say-form"><input id="say" placeholder="Or type to the commentator…" autocomplete="off" disabled><button>Send</button></form>
+        <div id="status" role="status">Not connected</div>
+        <div id="transcript"></div>
+      </div>
+      <div class="panel">
+        <h2>Director's feed <small>what it cut in for, and what it ignored</small></h2>
+        <div id="feed"></div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="/web/app.js"></script>
+</body>
+</html>
