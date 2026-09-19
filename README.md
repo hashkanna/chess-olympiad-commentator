@@ -103,7 +103,8 @@ cue about 0.9 s later (measured; `scripts/spike_cues.py` is the experiment that 
   GPU endpoint, our own open-weight model, writing the on-screen captions.
 - **Pydantic**: Pydantic models are the contract between every component and the tool interface
   to Gemini Live (schema out, validation against live state in, errors back to the model so it
-  asks again). **Pydantic AI** agent for captions, routed through the **Pydantic AI Gateway** to
+  asks again). **Pydantic Evals** pins the director's judgement as a regression suite
+  (`evals/gate_evals.py`). **Pydantic AI** agent for captions, routed through the **Pydantic AI Gateway** to
   our Modal endpoint (BYOK), where a **custom optimization rule** sets caption house style
   without touching agent code and a **custom Redact guardrail** keeps viewers' phone numbers off
   the model. **Logfire** traces every move → cue → voice and every Gateway call.
@@ -139,6 +140,9 @@ that the engine room is closed.
 |---|---|
 | `scripts/fetch_pgn.py` | Download finished rounds from Lichess broadcasts |
 | `scripts/find_drama.py` | Rank a round's matches by the single moves that moved a match forecast most |
+| `evals/gate_evals.py` | **Pydantic Evals** suite for the director's judgement: twelve situations ("+9 to +6 is not drama", "huge blunder in another match") with the decision a good broadcast director would make, plus a rule that the viewer is never interrupted for another match |
+| `scripts/sweep_teams.py` | Follows all 200 teams and pushes each whole match through the hub: 0 failures |
+| `scripts/record_demo.py` | Records the demo hands-free: text-to-speech viewer as the microphone, server-side speech capture, ffmpeg mux |
 | `scripts/score_forecast.py` | Brier score and reliability table for the match forecast against real results |
 | `scripts/spike_cues.py` | The experiment: can an outside event interrupt a Live conversation through a tool? |
 | `scripts/smoke_voice.py` | Whole system through the voice WebSocket with typed input (server must be running) |
