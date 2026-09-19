@@ -6,7 +6,7 @@ when something important happens in your team's match.
 
 Built solo at the {Tech: Europe} Agentic AI Hack, London, 19 September 2026.
 
-**[▶ Watch the two-minute demo](docs/demo.mp4)** ([download](https://github.com/hashkanna/chess-olympiad-commentator/releases/download/demo-v1/olympiad-commentator-demo.mp4)) ·
+**[▶ Watch the two-minute demo](https://hashkanna.github.io/chess-olympiad-commentator/)** ([download](https://github.com/hashkanna/chess-olympiad-commentator/releases/download/demo-v1/olympiad-commentator-demo.mp4)) ·
 [Pydantic Gateway challenge write-up](docs/gateway-rule.md). The demo was recorded hands-free by
 `scripts/record_demo.py`: the viewer's questions are a text-to-speech voice fed in as the microphone.
 

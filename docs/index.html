@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Olympiad Commentator · demo</title>
+  <style>
+    body { margin: 0; background: #101216; color: #eceef2; font: 16px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+    h1 { font-size: 1.5rem; margin: 0 0 4px; }
+    p { color: #b4b9c5; margin: 8px 0; max-width: 75ch; }
+    video { width: 100%; border-radius: 10px; border: 1px solid #2b303a; margin: 16px 0; background: #000; }
+    a { color: #6ea8ff; }
+    ul { color: #b4b9c5; padding-left: 20px; max-width: 75ch; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Olympiad Commentator</h1>
+    <p>A personal AI voice commentator for any team at the Chess Olympiad. Built solo at the {Tech: Europe} Agentic AI Hack, London, 19 September 2026.</p>
+    <video controls preload="metadata" src="demo.mp4"></video>
+    <p>Recorded hands-free by <code>scripts/record_demo.py</code>. The viewer's questions are a text-to-speech voice fed in as the microphone; the commentator is Gemini Live; the games are a replay of real round-1 games from the 46th Chess Olympiad (Botswana v Brazil, which really ended 2–2).</p>
+    <ul>
+      <li>0:00 match summary and forecast · 0:16 a spoken question answered from engine facts</li>
+      <li>≈1:00 the commentator breaks off: Brazil blunders with 34.Rd7. Red arrow: the blunder. Green arrow: the refutation from Stockfish on Modal. The caption under the board is written by Gemma on a Modal GPU through the Pydantic AI Gateway.</li>
+      <li>≈1:17 “what if Black plays bishop to c8?” is searched at depth 20 on Modal in the background and the answer cuts in</li>
+      <li>≈1:40 “why did you cut in?”: the director explains its decision</li>
+    </ul>
+    <p><a href="https://github.com/hashkanna/chess-olympiad-commentator">Source and README on GitHub</a> · <a href="https://github.com/hashkanna/chess-olympiad-commentator/blob/main/docs/gateway-rule.md">Pydantic Gateway challenge write-up</a></p>
+  </main>
+</body>
+</html>
