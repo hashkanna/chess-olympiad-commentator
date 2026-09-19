@@ -22,6 +22,7 @@ from .pgn_replay import Game, ReplayClock, Round, load_round, replay
 
 LEAD_IN_MINUTES = 24  # start the replay this much game time before the match's biggest swing
 ENGINE_WAIT_SECONDS = 1.5  # how long a cue may wait for the engine's refutation
+HOLD_AFTER_CUT_IN = 30.0  # the director stays on the moment this long after cutting in
 ARROW_SECONDS = 25.0  # arrows stay on a board at least this long, even if play moves on
 
 
@@ -215,6 +216,8 @@ class Hub:
 
     async def _emit(self, cue: CommentaryCue, received: float) -> None:
         self.feed.append(cue)
+        if cue.decision is Decision.interrupt and cue.swing and self.clock:
+            self.clock.hold(HOLD_AFTER_CUT_IN)
         logfire.info("cue {decision}: {headline}", decision=cue.decision.value, headline=cue.headline, reason=cue.reason)
         await self.broadcast({"type": "alert", "cue": cue.model_dump(mode="json"), "gate_ms": round((time.monotonic() - received) * 1000)})
         if cue.about_viewer_match:
@@ -268,6 +271,7 @@ class Hub:
             "featured": self.featured,
             "speed": self.speed,
             "game_minutes": round(self.clock.now() / 60) if self.clock else None,
+            "held_seconds": round(self.clock.held_for()) if self.clock else 0,
             "boards": [b.model_dump(mode="json") | {"arrows": self.arrows.get(b.board, [])} for b in self.match_boards()],
             "prediction": p and p.model_dump(),
             "engine": engine.status(),

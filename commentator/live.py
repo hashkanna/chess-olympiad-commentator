@@ -89,7 +89,7 @@ async def run_voice(ws: WebSocket, hub: Hub, profile: ViewerProfile) -> None:
                     payload = {
                         "cue": cue.decision.value,
                         "fact": cue.fact,
-                        "instruction": "Cut in now." if cue.decision is Decision.interrupt else "Mention briefly at a pause." if cue.decision is Decision.when_idle else "Do not speak about this unless asked.",
+                        "instruction": "Cut in now. Say who slipped and with which move, the engine's punishing reply if given, and what it does to the match forecast. The replay is held on this position for half a minute, so invite a question." if cue.decision is Decision.interrupt else "Mention briefly at a pause." if cue.decision is Decision.when_idle else "Do not speak about this unless asked.",
                     }
                     sent = time.monotonic()
                     if cue.decision is Decision.interrupt:

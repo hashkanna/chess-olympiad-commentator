@@ -23,7 +23,10 @@ project is the commentator that would have been with you for it.
 4. Mid-conversation it cuts in: *"Hold on — board four. Brazil has just blundered."*
    The featured board switches, a red arrow shows the blunder and a green arrow shows the
    engine's refutation.
-5. Ask "why did you cut in?" and it tells you what the director weighed. The feed on the
+5. After cutting in, the director holds the replay on that position for half a minute, so you
+   can ask about it: "what if Black plays Bc8?" runs a depth-20 search on Modal in the
+   background and the answer cuts in when it lands.
+6. Ask "why did you cut in?" and it tells you what the director weighed. The feed on the
    right also shows what it chose to ignore, greyed out, with the reason.
 
 ## How it works

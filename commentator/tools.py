@@ -188,6 +188,8 @@ async def what_if(args: WhatIf, hub: Hub) -> dict:
     move = position.parse_san(args.move)
     position.push(move)
     hub.arrows[args.board] = [{"orig": move.uci()[:2], "dest": move.uci()[2:4], "brush": "blue"}]
+    if hub.clock:
+        hub.clock.hold(20)  # keep this position on the board while the engine thinks and the answer lands
     await hub.feature(args.board)
     try:
         result = await engine.analyse(position.fen(), depth=20)

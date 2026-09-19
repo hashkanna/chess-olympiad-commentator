@@ -76,7 +76,7 @@ function render() {
     pinned = null; // the director changed subject: follow it
   }
   const featuredNo = pinned ?? snap.featured;
-  const elapsed = ((performance.now() - snapAt) / 1000) * snap.speed;
+  const elapsed = snap.held_seconds > 0 ? 0 : ((performance.now() - snapAt) / 1000) * snap.speed;
 
   for (const b of boards) {
     const { cg, el } = minis.get(b.board);
@@ -121,7 +121,11 @@ function render() {
   }
   if (snap.game_minutes != null) {
     const m = snap.game_minutes + Math.floor(elapsed / 60);
-    $("game-clock").textContent = `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m into the round · ${snap.speed}× speed`;
+    const held = Math.max(0, snap.held_seconds - Math.floor((performance.now() - snapAt) / 1000));
+    $("game-clock").textContent = held > 0
+      ? `${Math.floor(snap.game_minutes / 60)}h ${String(snap.game_minutes % 60).padStart(2, "0")}m · director is holding on this moment (${held}s)`
+      : `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m into the round · ${snap.speed}× speed`;
+    $("game-clock").classList.toggle("replay", held > 0);
   }
   $("engine").textContent = snap.engine === "modal" ? "Engine room: Stockfish on Modal" : "Engine room: closed";
   $("engine").classList.toggle("live", snap.engine === "modal");

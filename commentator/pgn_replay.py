@@ -159,17 +159,38 @@ def load_round(round_number: int = 1, data_dir: Path = DATA) -> Round:
 
 
 class ReplayClock:
-    """Maps wall time to game time at a chosen speed."""
+    """Maps wall time to game time at a chosen speed. `hold()` freezes game time for a while,
+    the way a broadcast stays on a key moment, so the viewer can talk about the position."""
 
     def __init__(self, start_t: float = 0.0, speed: float = 20.0):
         self.start_t, self.speed = start_t, speed
         self._wall0 = time.monotonic()
+        self._hold_from = self._hold_until = 0.0
+
+    def _wall(self) -> float:
+        wall = time.monotonic()
+        if self._hold_until:
+            if wall < self._hold_until:
+                return self._hold_from
+            self._wall0 += self._hold_until - self._hold_from  # the hold is over: carry on from where we froze
+            self._hold_from = self._hold_until = 0.0
+        return wall
 
     def now(self) -> float:
-        return self.start_t + (time.monotonic() - self._wall0) * self.speed
+        return self.start_t + (self._wall() - self._wall0) * self.speed
+
+    def hold(self, seconds: float) -> None:
+        wall = self._wall()
+        if self._hold_until:
+            self._hold_until = max(self._hold_until, time.monotonic() + seconds)
+        else:
+            self._hold_from, self._hold_until = wall, wall + seconds
+
+    def held_for(self) -> float:
+        return max(0.0, self._hold_until - time.monotonic()) if self._hold_until else 0.0
 
     def wall_seconds_until(self, t: float) -> float:
-        return max(0.0, (t - self.now()) / self.speed)
+        return max(0.0, (t - self.now()) / self.speed) + self.held_for()
 
 
 async def replay(rnd: Round, clock: ReplayClock) -> AsyncIterator[MoveEvent]:
@@ -178,8 +199,8 @@ async def replay(rnd: Round, clock: ReplayClock) -> AsyncIterator[MoveEvent]:
         (m for g in rnd.games.values() for m in g.moves if m.t > clock.start_t), key=lambda m: m.t
     )
     for move in timeline:
-        if (wait := clock.wall_seconds_until(move.t)) > 0:
-            await asyncio.sleep(wait)
+        while (wait := clock.wall_seconds_until(move.t)) > 0:
+            await asyncio.sleep(min(wait, 0.25))  # short naps, so a hold() takes effect at once
         yield move
 
 
