@@ -123,6 +123,7 @@ that the engine room is closed.
 |---|---|
 | `scripts/fetch_pgn.py` | Download finished rounds from Lichess broadcasts |
 | `scripts/find_drama.py` | Rank a round's matches by the single moves that moved a match forecast most |
+| `scripts/score_forecast.py` | Brier score and reliability table for the match forecast against real results |
 | `scripts/spike_cues.py` | The experiment: can an outside event interrupt a Live conversation through a tool? |
 | `scripts/smoke_voice.py` | Whole system through the voice WebSocket with typed input (server must be running) |
 | `python -m commentator.pgn_replay info` | Summary of the loaded round |
@@ -135,10 +136,15 @@ that the engine room is closed.
   across 99 containers (≈490 positions/s). The result, `data/analysis/round1.json`, makes every
   refutation arrow instant; live calls are kept for "what if" and as the fallback.
 - Round 1 loaded and timelined: 393 games, 100 matches, 200 teams, in under 2 s.
+- Match forecast scored against the real results (`scripts/score_forecast.py`, 1,756 forecasts
+  over 95 matches): Brier score **0.016**, against 0.021 for ratings alone and 0.667 for a uniform
+  guess. Round 1 pairs the top half against the bottom half, so ratings alone call almost every
+  match; the live position mainly helps late on (0.007 against 0.022 after three hours). The
+  model's parameters were set by hand and never fitted to these results.
 
 ## Limits
 
 - One viewer at a time: the hub holds a single viewer's state.
-- The match model is a hand-set blend of evaluation and rating, not yet fitted or scored
-  for calibration.
+- The match model is a hand-set blend of evaluation and rating. It is scored (see above) but
+  not fitted, and round 1 is too lopsided to say much about calibration in close matches.
 - The gate is rules. A learned gate could sit behind the same interface.
