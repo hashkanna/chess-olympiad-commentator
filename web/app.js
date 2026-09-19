@@ -6,6 +6,7 @@ import { startVoice } from "/web/voice.js";
 
 const $ = (id) => document.getElementById(id);
 const pct = (x) => `${Math.round(x * 100)}%`;
+const SID = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2); // this tab's own replay and voice
 const START_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 let snap = null; // latest state from the hub
@@ -158,7 +159,7 @@ function showLatency(ev) {
 }
 
 function connectEvents() {
-  const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/events`);
+  const ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/ws/events?sid=${SID}`);
   ws.onmessage = (e) => {
     const ev = JSON.parse(e.data);
     if (ev.type === "state") {
@@ -185,10 +186,10 @@ function connectEvents() {
 connectEvents();
 setInterval(render, 1000); // keeps the clocks ticking between moves
 
-const profile = () => ({ team: $("team").value.trim(), level: $("level").value, language: $("language").value.trim() || "English" });
+const profile = () => ({ team: $("team").value.trim(), level: $("level").value, language: $("language").value.trim() || "English", sid: SID });
 
 $("watch").onclick = async () => {
-  const r = await fetch("/api/follow", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile()) });
+  const r = await fetch(`/api/follow?sid=${SID}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile()) });
   if (!r.ok) $("status").textContent = `Could not follow that team (${r.status}). Check the spelling.`;
 };
 

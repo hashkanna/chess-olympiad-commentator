@@ -1,6 +1,7 @@
 # Submission text
 
 **Project:** Olympiad Commentator
+**Live:** https://deshkanna--olympiad-commentator.modal.run · **Video:** https://hashkanna.github.io/chess-olympiad-commentator/
 **Repo:** https://github.com/hashkanna/chess-olympiad-commentator
 **Track:** Open Innovation · **Partner tech:** Google DeepMind, Modal, Pydantic
 

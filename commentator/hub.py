@@ -3,7 +3,7 @@
 Every move in the round flows through here: board update -> swing detector -> match
 forecast -> gate -> CommentaryCue. Cues go to the web UI (alert feed, arrows) and to
 the voice session (as continuing tool responses with the gate's scheduling).
-One viewer at a time: this is a demo server, not a multi-tenant one.
+Each browser tab gets its own Hub (its own replay clock, feed and voice); the loaded round is shared.
 """
 
 import asyncio
@@ -37,8 +37,8 @@ def _pawns(cp: int | None, mate: int | None) -> str:
 
 
 class Hub:
-    def __init__(self, speed: float = 20.0):
-        self.rnd: Round = load_round(1)
+    def __init__(self, speed: float = 20.0, rnd: Round | None = None):
+        self.rnd: Round = rnd or load_round(1)  # the round is read-only, so viewers share it
         self.speed = speed
         self.boards: dict[str, BoardState] = {}
         self.profile: ViewerProfile | None = None
@@ -54,6 +54,10 @@ class Hub:
         self._replay_task: asyncio.Task | None = None
         self._cue_id = 0
         self._heads_up_given: set[tuple[str, str]] = set()  # (game, what) so each warning comes once
+
+    def stop(self) -> None:
+        if self._replay_task:
+            self._replay_task.cancel()
 
     # ---- viewer ---------------------------------------------------------
 

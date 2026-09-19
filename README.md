@@ -6,7 +6,8 @@ when something important happens in your team's match.
 
 Built solo at the {Tech: Europe} Agentic AI Hack, London, 19 September 2026.
 
-**[▶ Watch the two-minute demo](https://hashkanna.github.io/chess-olympiad-commentator/)** ([download](https://github.com/hashkanna/chess-olympiad-commentator/releases/download/demo-v1/olympiad-commentator-demo.mp4)) ·
+**[▶ Try it live, hosted on Modal](https://deshkanna--olympiad-commentator.modal.run)** (pick a team, press *Start commentary*, allow the microphone; each tab gets its own replay; first load after idle takes a few seconds) ·
+**[Watch the two-minute demo](https://hashkanna.github.io/chess-olympiad-commentator/)** ([download](https://github.com/hashkanna/chess-olympiad-commentator/releases/download/demo-v1/olympiad-commentator-demo.mp4)) ·
 [Pydantic Gateway challenge write-up](docs/gateway-rule.md). The demo was recorded hands-free by
 `scripts/record_demo.py`: the viewer's questions are a text-to-speech voice fed in as the microphone.
 
@@ -96,11 +97,14 @@ cue about 0.9 s later (measured; `scripts/spike_cues.py` is the experiment that 
 - **Google DeepMind — Gemini Live API** (`gemini-3.8-live`, `google-genai` SDK): two-way
   voice, barge-in, any language, non-blocking tools, and event-driven interruption through
   continuing tool responses with per-cue scheduling.
-- **Modal**, three ways: (1) Stockfish as a scale-to-zero CPU function, called live for
+- **Modal**, four ways: (1) Stockfish as a scale-to-zero CPU function, called live for
   refutations and depth-20 "what if" analysis (`engine_farm/app.py`); (2) the same image fanned
   out with `.map()` over every game of the round, about 100 containers at once, to give the
   director a best line and runner-up for all 30,189 positions; (3) Gemma 4 26B on a dedicated
   GPU endpoint, our own open-weight model, writing the on-screen captions.
+  And (4) the whole app itself: FastAPI, WebSockets and the Gemini Live voice bridge run as a
+  Modal ASGI app (`engine_farm/web.py`) with secrets from `.env`, so anyone with the link can
+  talk to it over HTTPS.
 - **Pydantic**: Pydantic models are the contract between every component and the tool interface
   to Gemini Live (schema out, validation against live state in, errors back to the model so it
   asks again). **Pydantic Evals** pins the director's judgement as a regression suite
@@ -123,6 +127,7 @@ uv sync
 uv run python scripts/fetch_pgn.py        # optional: round 1 PGNs are already in data/pgn/
 modal deploy engine_farm/app.py           # optional: Stockfish on Modal
 modal run engine_farm/app.py::analyse_round   # optional: re-run the whole-round fan-out
+modal deploy engine_farm/web.py           # optional: host the whole app on Modal (HTTPS, so phones work)
 uv run uvicorn commentator.server:app --port 8000
 ```
 
@@ -167,7 +172,7 @@ that the engine room is closed.
 
 ## Limits
 
-- One viewer at a time: the hub holds a single viewer's state.
+- Each browser tab gets its own hub (replay clock, feed, voice); the hosted demo caps this at 30 at once.
 - The match model is a hand-set blend of evaluation and rating. It is scored (see above) but
   not fitted, and round 1 is too lopsided to say much about calibration in close matches.
 - The gate is rules. A learned gate could sit behind the same interface.
