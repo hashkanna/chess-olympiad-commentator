@@ -14,7 +14,7 @@ import chess
 import logfire
 from fastapi import WebSocket
 
-from . import engine
+from . import captions, engine
 from .contracts import BoardState, CommentaryCue, Decision, MatchPrediction, MoveEvent, SwingEvent, ViewerProfile
 from .gate import Gate
 from .model import detect_swing, material, predict_match, win_chance_white
@@ -223,6 +223,14 @@ class Hub:
         if cue.about_viewer_match:
             for q in self.cue_queues:
                 q.put_nowait((cue, received))
+        if cue.about_viewer_match and cue.decision is not Decision.silent and self.profile and captions.enabled():
+            asyncio.create_task(self._caption(cue, self.profile))
+
+    async def _caption(self, cue: CommentaryCue, profile: ViewerProfile) -> None:
+        started = time.monotonic()
+        text = await captions.write_caption(cue, profile)
+        if text:
+            await self.broadcast({"type": "caption", "cue_id": cue.id, "text": text, "ms": round((time.monotonic() - started) * 1000)})
 
     # ---- what the voice tools read ----------------------------------------
 

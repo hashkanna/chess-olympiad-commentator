@@ -136,6 +136,7 @@ const CHIP = { interrupt: "CUT IN", when_idle: "AT A PAUSE", silent: "IGNORED" }
 function addCue({ cue }) {
   const el = document.createElement("div");
   el.className = `cue ${cue.decision}`;
+  el.id = `cue-${cue.id}`;
   el.innerHTML = `<div class="head"><span class="chip"></span><span class="text"></span></div><div class="why"></div>`;
   el.querySelector(".chip").textContent = CHIP[cue.decision];
   el.querySelector(".text").textContent = cue.headline;
@@ -171,7 +172,12 @@ function connectEvents() {
       $("latency").hidden = true;
       $("stage").classList.remove("flash");
     } else if (ev.type === "alert") addCue(ev);
-    else if (ev.type === "latency") showLatency(ev);
+    else if (ev.type === "caption") {
+      $("caption").textContent = ev.text;
+      $("caption").classList.add("written");
+      const why = document.querySelector(`#cue-${ev.cue_id} .why`);
+      if (why) why.textContent = `“${ev.text}” — caption by Gemma on Modal, ${ev.ms} ms`;
+    } else if (ev.type === "latency") showLatency(ev);
   };
   ws.onclose = () => setTimeout(connectEvents, 1000);
 }

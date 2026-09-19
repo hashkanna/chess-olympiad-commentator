@@ -32,6 +32,7 @@ main { display: grid; grid-template-columns: minmax(0, 540px) minmax(0, 460px) m
 .player .meta { color: var(--muted); font-size: .85rem; }
 .player .clock { margin-left: auto; font-variant-numeric: tabular-nums; background: var(--panel-2); padding: 1px 8px; border-radius: 5px; }
 .player .clock.ticking { color: var(--ink); outline: 1px solid var(--line); }
+.caption.written { color: var(--ink); font-size: 1rem; }
 .caption { color: var(--muted); font-size: .9rem; margin: 6px 28px 0; min-height: 2.6em; }
 
 /* match panel + minis */

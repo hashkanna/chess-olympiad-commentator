@@ -24,6 +24,7 @@ WEB = Path(__file__).parent.parent / "web"
 
 logfire.configure(send_to_logfire="if-token-present", service_name="olympiad-commentator")
 logfire.instrument_pydantic()
+logfire.instrument_pydantic_ai()
 
 hub: Hub
 
