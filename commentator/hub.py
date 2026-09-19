@@ -24,6 +24,9 @@ from .pgn_replay import Game, ReplayClock, Round, load_round, replay
 LEAD_IN_MINUTES = float(os.environ.get("LEAD_IN_MINUTES", "24"))  # start the replay this much game time before the match's biggest swing
 ENGINE_WAIT_SECONDS = 1.5  # how long a cue may wait for the engine's refutation
 HOLD_AFTER_CUT_IN = 30.0  # the director stays on the moment this long after cutting in
+TIME_TROUBLE_SECONDS = 5 * 60  # below this before move 40, the clock is part of the story
+TIME_CONTROL_MOVE = 40
+KNIFE_EDGE_GAP = 0.20  # best move keeps this much more winning chance than the runner-up
 ARROW_SECONDS = 25.0  # arrows stay on a board at least this long, even if play moves on
 
 
@@ -50,6 +53,7 @@ class Hub:
         self.gate = Gate()
         self._replay_task: asyncio.Task | None = None
         self._cue_id = 0
+        self._heads_up_given: set[tuple[str, str]] = set()  # (game, what) so each warning comes once
 
     # ---- viewer ---------------------------------------------------------
 
@@ -57,10 +61,15 @@ class Hub:
         return difflib.get_close_matches(name.title(), self.rnd.teams, n=3, cutoff=0.5)
 
     async def follow(self, profile: ViewerProfile, start_t: float | None = None) -> None:
+        if self.profile and self.profile.team == profile.team and self._replay_task and not self._replay_task.done():
+            self.profile = profile  # same team: only level or language changed, so keep the replay running
+            await self.broadcast_state()
+            return
         self.profile = profile
         self.match_id = self.rnd.match_for(profile.team)
         self.feed.clear()
         self.arrows.clear()
+        self._heads_up_given.clear()
         self.featured = 1
         self.gate = Gate()
         if start_t is None:
@@ -147,6 +156,8 @@ class Hub:
                 await self._cue_for_swing(swing, verdict, after_state, after, received)
         if ours and after_state.result:
             await self._cue_for_result(after_state, after, received)
+        elif ours and not swing:
+            await self._heads_up(after_state, move, after, received)
         if ours:
             await self.broadcast_state()
 
@@ -172,6 +183,9 @@ class Hub:
             f"to {_pawns(swing.eval_after, swing.mate_after)} (White's point of view). {swing.mover}'s winning chances on this "
             f"board fell from {swing.mover_chance_before:.0%} to {swing.mover_chance_after:.0%}."
         )
+        mover_clock = state.clock_white if swing.ply % 2 else state.clock_black
+        if mover_clock is not None and mover_clock < TIME_TROUBLE_SECONDS and swing.move_number < TIME_CONTROL_MOVE:
+            fact += f" {swing.mover} was in time trouble, with about {max(1, mover_clock // 60)} minutes left."
         if swing.refutation_san:
             fact += f" The engine's punishing reply is {swing.refutation_san}."
         if prediction and ours:
@@ -193,6 +207,51 @@ class Hub:
             id=self._next_id(), t=self.clock.now() if self.clock else 0, decision=decision, reason=reason, headline=headline,
             fact=fact, match_id=swing.match_id, board=swing.board, about_viewer_match=ours, swing=swing, prediction=prediction,
         ), received)
+
+    async def _heads_up(self, state: BoardState, move: MoveEvent, prediction, received: float) -> None:
+        """Warn before anything has gone wrong: a short clock, or a position with one move that holds.
+        Uses only the current position and clocks, never what was played next."""
+        white_moved = move.ply % 2 == 1
+        mover, waiting = (state.white, state.black) if white_moved else (state.black, state.white)
+        mover_clock, waiting_clock = (state.clock_white, state.clock_black) if white_moved else (state.clock_black, state.clock_white)
+        move_number = (move.ply + 1) // 2
+        undecided = 0.15 < state.win_chance_white < 0.85
+        viewer_team = self.profile.team if self.profile else mover.team
+        fact = headline = reason = None
+
+        key = (state.game_id, f"clock-{mover.name}")
+        if (undecided and mover_clock is not None and mover_clock < TIME_TROUBLE_SECONDS and move_number < TIME_CONTROL_MOVE
+                and key not in self._heads_up_given):
+            self._heads_up_given.add(key)
+            left = TIME_CONTROL_MOVE - move_number
+            headline = f"Bd {state.board} · time trouble · {mover.team} {mover_clock // 60} min for {left} moves"
+            reason = "Short clocks are where blunders come from: worth a heads-up before anything happens."
+            fact = (f"Time trouble on board {state.board}: {mover.name} ({mover.team}) is down to {mover_clock // 60} minutes for the next {left} moves "
+                    f"before the time control at move 40, with 30 seconds added per move. {waiting.name} ({waiting.team}) has "
+                    f"{(waiting_clock or 0) // 60} minutes. The position is still in the balance. "
+                    f"This is {'a worry' if mover.team == viewer_team else 'an opportunity'} for {viewer_team}.")
+        else:
+            lines = engine.cached_lines(state.game_id, move.ply)
+            key = (state.game_id, f"edge-{move.ply // 12}")
+            if lines and lines[2] and (lines[3] is not None or lines[4] is not None) and key not in self._heads_up_given:
+                position = chess.Board(state.fen)
+                best_move = chess.Move.from_uci(lines[2])
+                best, second = win_chance_white(lines[0], lines[1]), win_chance_white(lines[3], lines[4])
+                if not position.turn:
+                    best, second = 1 - best, 1 - second
+                forced = position.is_check() or position.is_capture(best_move)
+                if best - second >= KNIFE_EDGE_GAP and 0.3 <= best <= 0.9 and not forced:
+                    self._heads_up_given.add(key)
+                    headline = f"Bd {state.board} · knife edge · {waiting.team} has one move that holds"
+                    reason = "Stockfish on Modal finds a single good move here: worth a heads-up before it is played."
+                    fact = (f"Knife edge on board {state.board}: {waiting.name} ({waiting.team}) is to move and the engine finds only one move that holds, "
+                            f"{position.san(best_move)}. With it their winning chances are {best:.0%}; with the next-best move they fall to {second:.0%}. "
+                            f"This is {'a test' if waiting.team == viewer_team else 'a chance'} for {viewer_team}.")
+        if fact:
+            await self._emit(CommentaryCue(
+                id=self._next_id(), t=self.clock.now() if self.clock else 0, decision=Decision.when_idle, reason=reason,
+                headline=headline, fact=fact, match_id=state.match_id, board=state.board, prediction=prediction,
+            ), received)
 
     async def _cue_for_result(self, state: BoardState, prediction: MatchPrediction | None, received: float) -> None:
         winner = {"1-0": state.white, "0-1": state.black}.get(state.result or "")

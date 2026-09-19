@@ -78,6 +78,14 @@ def cached_reply(game_id: str, ply: int, fen: str) -> dict | None:
     return {"uci": uci, "san": chess.Board(fen).san(chess.Move.from_uci(uci)), "cp": rows[ply - 1][0], "mate": rows[ply - 1][1]}
 
 
+def cached_lines(game_id: str, ply: int) -> tuple[int | None, int | None, str | None, int | None, int | None] | None:
+    """(cp, mate, best move, runner-up cp, runner-up mate) for the position after `ply`, White's view."""
+    rows = _round_analysis().get(game_id)
+    if not rows or ply > len(rows) or len(rows[ply - 1]) < 5:
+        return None
+    return tuple(rows[ply - 1])
+
+
 async def warm_up() -> None:
     try:
         await analyse(chess.STARTING_FEN, depth=8)

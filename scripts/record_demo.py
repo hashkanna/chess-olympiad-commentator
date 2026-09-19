@@ -30,7 +30,7 @@ LENGTH = 118  # seconds of call to record
 SIZE = {"width": 1460, "height": 820}
 QUESTIONS = [  # seconds after pressing Start -> what the viewer says
     (17, "Why is board three going badly for us?"),
-    (45, "While we wait, tell me the history of the Chess Olympiad, in detail."),
+    (51, "Tell me the history of the Chess Olympiad, in detail."),
     (78, "What if Black plays bishop to c8 on board four?"),
     (100, "Why did you cut in earlier?"),
 ]

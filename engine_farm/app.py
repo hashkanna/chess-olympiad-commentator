@@ -46,7 +46,8 @@ def analyse(fen: str, depth: int = 18, multipv: int = 1) -> dict:
 
 @app.function(image=image, cpu=1.0, timeout=900, max_containers=100)
 def analyse_game(fens: list[str], depth: int = 14) -> list[dict]:
-    """Every position of one game with a single engine process. Used with .map() over a round."""
+    """Every position of one game with a single engine process: best line and runner-up.
+    The gap between them tells the director when a player has only one move that holds."""
     import chess
     import chess.engine
 
@@ -56,12 +57,16 @@ def analyse_game(fens: list[str], depth: int = 14) -> list[dict]:
         for fen in fens:
             board = chess.Board(fen)
             if board.is_game_over():
-                out.append({"cp": None, "mate": None, "best": None})
+                out.append({"cp": None, "mate": None, "best": None, "cp2": None, "mate2": None})
                 continue
-            info = engine.analyse(board, chess.engine.Limit(depth=depth))
-            score = info["score"].white()
-            pv = info.get("pv", [])
-            out.append({"cp": score.score(), "mate": score.mate(), "best": pv[0].uci() if pv else None})
+            infos = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=2)
+            score = infos[0]["score"].white()
+            pv = infos[0].get("pv", [])
+            second = infos[1]["score"].white() if len(infos) > 1 else None
+            out.append({
+                "cp": score.score(), "mate": score.mate(), "best": pv[0].uci() if pv else None,
+                "cp2": second.score() if second else None, "mate2": second.mate() if second else None,
+            })
     finally:
         engine.quit()
     return out
@@ -88,7 +93,7 @@ def analyse_round(round_number: int = 1, depth: int = 14):
     out.mkdir(parents=True, exist_ok=True)
     payload = {
         "round": round_number, "depth": depth, "games": len(games), "positions": positions, "wall_seconds": round(took, 1),
-        "analysis": {g.game_id: [[r["cp"], r["mate"], r["best"]] for r in res] for g, res in zip(games, results)},
+        "analysis": {g.game_id: [[r["cp"], r["mate"], r["best"], r["cp2"], r["mate2"]] for r in res] for g, res in zip(games, results)},
     }
     (out / f"round{round_number}.json").write_text(json.dumps(payload, separators=(",", ":")))
     print(f"{positions} positions in {took:.1f} s wall = {positions / took:.0f} positions/s across the farm")

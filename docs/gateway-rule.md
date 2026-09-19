@@ -16,10 +16,10 @@ also means the caption lands after the moment has passed.
 >
 > **Instruction injected on every request to this route:**
 > You are writing a lower-third caption for a live chess broadcast. Output exactly one
-> sentence of at most 16 words, in the language requested. Lead with the team or player
-> the viewer follows. Present tense. Say what happened and what it means for the match.
-> No engine numbers, no centipawns, no move lists, no preamble, no quotation marks, no
-> markdown.
+> sentence of at most 16 words, in the language requested. Name the player or team it
+> happened to, exactly as the facts state, and say whether it helps or hurts the team the
+> viewer follows. Present tense. No engine numbers, no percentages, no move lists, no
+> preamble, no quotation marks, no markdown.
 
 When installing the rule, tick the `modal` endpoint in step 2 ("Choose endpoints"), or it
 silently does nothing.
@@ -30,17 +30,25 @@ run with the rule disabled, then with it enabled. Same script, same prompts, sam
 
 | | Rule off | Rule on |
 |---|---|---|
-| Output tokens per caption (mean) | 57 | **19** (−67%) |
-| Latency per caption (mean) | 0.92 s | **0.70 s** |
-| One sentence of ≤16 words, leading with the viewer's team | 0 of 3 | **3 of 3** |
-| Logfire trace id | `01a0ba356945d8ba18a0221a12b7e0df` | `01a0ba36496254c810f7ecfed922f750` |
+| Output tokens per caption (mean) | 57 | **18** (−68%) |
+| Latency per caption (mean) | 0.92 s | **0.61 s** (−34%) |
+| One sentence of ≤16 words that names who it happened to | 0 of 3 | **3 of 3** |
+| Logfire trace id | `01a0ba356945d8ba18a0221a12b7e0df` | `01a0ba804d9331935a6c05d7a8bb5bb5` |
 
 The same cue (Brazil's 34.Rd7 blunder on board 4), before and after:
 
 > **Off:** Board 4: Roberto Junio Brito Molina (BRA) plays 34.Rd7. Molina's winning chances drop
 > from 50% to 7%. Match forecast for Botswana: 11% win, 53% draw, 36% loss.
 >
-> **On:** Botswana gains an advantage after Brazil's winning chances plummet on board four.
+> **On:** Roberto Junio Brito Molina's winning chances fall, which is good news for Botswana.
+
+**The rule was itself changed once, in the Gateway, without a deploy.** The first wording said
+"lead with the team the viewer follows". Captions got short (19 tokens), but one of them pinned
+Brazil's time trouble on Botswana, because the model forced the viewer's team into the subject.
+We reworded the rule in the Gateway UI ("name the player or team it happened to, exactly as the
+facts state"), re-ran the same script, and the captions came out accurate at 18 tokens. The
+agent's code and the running server never changed. That is the workflow this challenge is about:
+an editor fixes how every caption reads from a web page.
 
 Traces are in the Logfire project `deshkanna/starter-project` (EU); search `trace_id = '<id>'`.
 

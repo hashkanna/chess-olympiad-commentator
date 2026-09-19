@@ -24,13 +24,16 @@ project is the commentator that would have been with you for it.
 1. Pick a team, a level (beginner / club / expert) and a language. Press **Start commentary**.
 2. The commentator summarises your team's four boards and gives a match forecast.
 3. You chat with it by voice: "Why is board 3 worse?", "What if Black plays Bc8?"
-4. Mid-conversation it cuts in: *"Hold on — board four. Brazil has just blundered."*
+4. Before anything goes wrong it gives you a heads-up at a pause: *"Time trouble on board
+   four: Brito Molina has four minutes for seven moves,"* or *"knife edge on board one: only
+   Ne5 holds."* These use only the current clocks and position, never what was played next.
+5. Mid-conversation it cuts in: *"Hold on — board four. Brazil has just blundered."*
    The featured board switches, a red arrow shows the blunder and a green arrow shows the
    engine's refutation.
-5. After cutting in, the director holds the replay on that position for half a minute, so you
+6. After cutting in, the director holds the replay on that position for half a minute, so you
    can ask about it: "what if Black plays Bc8?" runs a depth-20 search on Modal in the
    background and the answer cuts in when it lands.
-6. Ask "why did you cut in?" and it tells you what the director weighed. The feed on the
+7. Ask "why did you cut in?" and it tells you what the director weighed. The feed on the
    right also shows what it chose to ignore, greyed out, with the reason.
 
 ## How it works
@@ -54,6 +57,7 @@ Lichess PGN ─> Replayer ─MoveEvent─> Swing detector ─SwingEvent─> Gate
 | Replayer | Loads the round, rebuilds each game's timeline from clock tags (90 min + 30 s/move, +30 min at move 40), emits `MoveEvent`s at N× speed. A game's result is withheld until the replay reaches its last move. | `commentator/pgn_replay.py` |
 | Swing detector | Converts evaluations to win chance and flags moves that cost the mover 10+ points of it. | `commentator/model.py` |
 | Match model | Blends position and ratings into an expected score per board, splits it into win/draw/loss, and convolves four boards into P(win / draw / loss) for the match. Plain code. | `commentator/model.py` |
+| Heads-ups | Time trouble (under five minutes before the move-40 time control, position still in the balance) and knife edges (Stockfish on Modal sees one move that keeps 20+ points more winning chance than the runner-up, and it is not a forced recapture or a check). | `commentator/hub.py` |
 | Gate | Decides **interrupt / mention at a pause / stay silent**, with a reason. Judges change in win chance, never raw centipawns (+9 to +6 is not drama). Rules, no model. | `commentator/gate.py` |
 | Hub | Holds state for every game in the round, runs the replay, fans cues out to the UI and the voice. | `commentator/hub.py` |
 | Voice | Gemini Live session bridged to the browser: audio both ways, barge-in, transcripts, tool dispatch, cue injection, measured latency. | `commentator/live.py` |
@@ -92,12 +96,17 @@ cue about 0.9 s later (measured; `scripts/spike_cues.py` is the experiment that 
 - **Google DeepMind — Gemini Live API** (`gemini-3.8-live`, `google-genai` SDK): two-way
   voice, barge-in, any language, non-blocking tools, and event-driven interruption through
   continuing tool responses with per-cue scheduling.
-- **Modal**: Stockfish as a Modal function on CPU containers (`engine_farm/app.py`), called
-  live for refutations and "what if" analysis and fanned out with `.map()` for whole-round
-  analysis. Scales to zero; no GPU needed.
-- **Pydantic**: Pydantic models as the contract between every component and as the tool
-  interface to Gemini Live (schema out, validation with live context in, errors back to the
-  model). **Logfire** spans from move to cue to voice (`LOGFIRE_TOKEN` optional).
+- **Modal**, three ways: (1) Stockfish as a scale-to-zero CPU function, called live for
+  refutations and depth-20 "what if" analysis (`engine_farm/app.py`); (2) the same image fanned
+  out with `.map()` over every game of the round, about 100 containers at once, to give the
+  director a best line and runner-up for all 30,189 positions; (3) Gemma 4 26B on a dedicated
+  GPU endpoint, our own open-weight model, writing the on-screen captions.
+- **Pydantic**: Pydantic models are the contract between every component and the tool interface
+  to Gemini Live (schema out, validation against live state in, errors back to the model so it
+  asks again). **Pydantic AI** agent for captions, routed through the **Pydantic AI Gateway** to
+  our Modal endpoint (BYOK), where a **custom optimization rule** sets caption house style
+  without touching agent code and a **custom Redact guardrail** keeps viewers' phone numbers off
+  the model. **Logfire** traces every move → cue → voice and every Gateway call.
 
 Also used: FastAPI, uvicorn, python-chess, chessground (GPL-3.0, loaded from a CDN), uv.
 Game data: Lichess broadcast API.
@@ -139,10 +148,13 @@ that the engine room is closed.
 
 - Interrupt cue → first audio from Gemini Live: **0.9 s** (spike, mid-sentence cut-off).
 - Stockfish on Modal, warm: **0.28 s** for a refutation, **0.9 s** for a depth-20 "what if".
-- Whole round on Modal with `.map()`, one call per game: **30,189 positions at depth 14 in 61 s**
-  across 99 containers (≈490 positions/s). The result, `data/analysis/round1.json`, makes every
-  refutation arrow instant; live calls are kept for "what if" and as the fallback.
-- Round 1 loaded and timelined: 393 games, 100 matches, 200 teams, in under 2 s.
+- Whole round on Modal with `.map()`, one call per game, best line and runner-up for every
+  position: **30,189 positions at depth 14 in 107 s** across about 100 containers (61 s for the
+  best line alone). The result, `data/analysis/round1.json`, makes every refutation arrow instant
+  and powers the knife-edge warning; live calls are kept for "what if" and as the fallback.
+- Gemma 4 26B on a dedicated Modal GPU endpoint writes each on-screen caption in about 0.6 s
+  through the Pydantic AI Gateway; a custom Gateway rule cut caption output from 57 to 18 tokens
+  and a custom Redact guardrail fired ([write-up](docs/gateway-rule.md)).
 - Match forecast scored against the real results (`scripts/score_forecast.py`, 1,756 forecasts
   over 95 matches): Brier score **0.016**, against 0.021 for ratings alone and 0.667 for a uniform
   guess. Round 1 pairs the top half against the bottom half, so ratings alone call almost every
