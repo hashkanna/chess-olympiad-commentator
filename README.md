@@ -4,11 +4,12 @@
 time, in your language. It follows every game in the round at once and interrupts you only
 when something important happens in your team's match.
 
-Built solo at the {Tech: Europe} Agentic AI Hack, London, 19 September 2026.
+Built solo at the {Tech: Europe} Agentic AI Hack, London, 19 September 2026, where it took **second place**.
 
-**[▶ Try it live, hosted on Modal](https://deshkanna--olympiad-commentator.modal.run)** (pick a team, press *Start commentary*, allow the microphone; each tab gets its own replay; first load after idle takes a few seconds) ·
 **[Watch the two-minute demo](https://hashkanna.github.io/chess-olympiad-commentator/)** ([download](https://github.com/hashkanna/chess-olympiad-commentator/releases/download/demo-v1/olympiad-commentator-demo.mp4)) ·
-[Pydantic Gateway challenge write-up](docs/gateway-rule.md). The demo was recorded hands-free by
+[Pydantic Gateway challenge write-up](docs/gateway-rule.md) ·
+[Hosted on Modal during the event](https://deshkanna--olympiad-commentator.modal.run) (it ran on the
+hackathon's Gemini account, which has since closed). The demo was recorded hands-free by
 `scripts/record_demo.py`: the viewer's questions are a text-to-speech voice fed in as the microphone.
 
 About 190 countries play the Olympiad across hundreds of boards. Human commentators cover
